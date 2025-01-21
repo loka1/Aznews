@@ -48,6 +48,10 @@
 
                             {% from "admin/_formhelpers.html" import render_field %}
                             <form class="user" method="post">
+                                {{ form.csrf_token }}
+                                {% if form.csrf_token.errors %}
+                                    <div class="warning">You have submitted an invalid CSRF token</div>
+                                {% endif %}
                                 <div class="form-group row">
                                     <div class="col-sm-6 mb-3 mb-sm-0">
                                         {{ render_field(form.first_name) }}

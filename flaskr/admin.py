@@ -42,6 +42,9 @@ def guest_required(view):
     return wrapped_view
 
 class RegistrationForm(Form):
+    class Meta:
+        csrf = True
+        
     username = StringField('Username', [validators.Length(min=4, max=25)])
     first_name = StringField('First Name', [validators.Length(min=4, max=25)])
     last_name = StringField('Last Name', [validators.Length(min=4, max=25)])
@@ -90,6 +93,9 @@ def register():
     return render_template('admin/auth/register.html', form=form)
 
 class LoginForm(Form):
+    class Meta:
+        csrf = True
+        
     username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])
     remember_me = BooleanField('Remember Me', default=False)
