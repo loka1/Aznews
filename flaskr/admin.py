@@ -14,7 +14,6 @@ bp = Blueprint('admin', __name__, url_prefix='/admin')
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get('user_id')
-
     if user_id is None:
         g.user = None
     else:
@@ -25,6 +24,7 @@ def load_logged_in_user():
 def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
+        print(g.user)
         if g.user is None:
             return redirect(url_for('admin.login'))
 
@@ -39,7 +39,6 @@ def guest_required(view):
             return redirect(url_for('admin.index'))
 
         return view(**kwargs)
-
     return wrapped_view
 
 class RegistrationForm(Form):
@@ -70,8 +69,9 @@ class RegistrationForm(Form):
             raise validators.ValidationError('Email is already in use.')
 
 
-@guest_required
+
 @bp.route('/register', methods=('GET', 'POST'))
+@guest_required
 def register():
     form = RegistrationForm(request.form)
     if request.method == 'POST' and form.validate():
@@ -94,8 +94,9 @@ class LoginForm(Form):
     password = PasswordField('Password', [validators.DataRequired()])
     remember_me = BooleanField('Remember Me', default=False)
     
-@guest_required
+
 @bp.route('/login', methods=('GET', 'POST'))
+@guest_required
 def login():
     form = LoginForm(request.form)
     if request.method == 'POST' and form.validate():
@@ -115,14 +116,15 @@ def login():
 
     return render_template('admin/auth/login.html', form=form)
 
-@login_required
 @bp.route('/logout')
+@login_required
 def logout():
     session.clear()
     return redirect(url_for('index'))
 
 
-@login_required 
+ 
 @bp.route('/index')
+@login_required
 def index():
     return render_template('admin/index.html')
