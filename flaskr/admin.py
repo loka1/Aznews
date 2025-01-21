@@ -6,6 +6,8 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from flaskr.db import get_db
+from wtforms import Form, BooleanField, StringField, PasswordField, validators
+
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -40,74 +42,78 @@ def guest_required(view):
 
     return wrapped_view
 
+class RegistrationForm(Form):
+    username = StringField('Username', [validators.Length(min=4, max=25)])
+    first_name = StringField('First Name', [validators.Length(min=4, max=25)])
+    last_name = StringField('Last Name', [validators.Length(min=4, max=25)])
+    email = StringField('Email Address', [validators.Length(min=6, max=35), validators.Email()])
+    password = PasswordField('New Password', [
+        validators.DataRequired(),
+        validators.EqualTo('confirm_password', message='Passwords must match')
+    ])
+    confirm_password = PasswordField('Repeat Password')
+
+    def validate_username(self, field):
+        db = get_db()
+        user = db.execute(
+            "SELECT id FROM user WHERE username = ?", (field.data,)
+        ).fetchone()
+        if user is not None:
+            raise validators.ValidationError('Username is already in use.')
+
+    def validate_email(self, field):
+        db = get_db()
+        user = db.execute(
+            "SELECT id FROM user WHERE email = ?", (field.data,)
+        ).fetchone()
+        if user is not None:
+            raise validators.ValidationError('Email is already in use.')
+
 
 @guest_required
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
-        email = request.form['email']
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
+    form = RegistrationForm(request.form)
+    if request.method == 'POST' and form.validate():
         db = get_db()
-        error = None
+        try:
+            db.execute(
+                "INSERT INTO user (username, first_name, last_name, email, password) VALUES (?, ?, ?, ?, ?)",
+                (form.username.data, form.first_name.data, form.last_name.data, form.email.data, generate_password_hash(form.password.data)),
+            )
+            db.commit()
+        except db.IntegrityError:
+            flash(f"User {form.username.data} is already registered.",'danger')
+        else:
+            return redirect(url_for("admin.login"))
 
-        if not username:
-            error = 'Username is required.'
-        elif not first_name:
-            error = 'First name is required.'
-        elif not last_name:
-            error = 'Last name is required.'
-        elif not email:
-            error = 'Email is required.'
-        elif not password:
-            error = 'Password is required.'
-        elif password != confirm_password:
-            error = 'Passwords do not match.'
+    return render_template('admin/auth/register.html', form=form)
 
-        if error is None:
-            try:
-                db.execute(
-                    "INSERT INTO user (username, first_name, last_name, email, password) VALUES (?, ?, ?, ?, ?)",
-                    (username, first_name, last_name, email, generate_password_hash(password)),
-                )
-                db.commit()
-            except db.IntegrityError:
-                error = f"User {username} is already registered."
-            else:
-                return redirect(url_for("admin.auth.login"))
-
-        flash(error)
-
-    return render_template('admin/auth/register.html')
-
+class LoginForm(Form):
+    username = StringField('Username', [validators.DataRequired()])
+    password = PasswordField('Password', [validators.DataRequired()])
+    remember_me = BooleanField('Remember Me', default=False)
+    
 @guest_required
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    form = LoginForm(request.form)
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        password = form.password.data
         db = get_db()
-        error = None
         user = db.execute(
             "SELECT * FROM user WHERE username = ?", (username,)
         ).fetchone()
 
-        if user is None:
-            error = 'Incorrect username.'
-        elif not check_password_hash(user['password'], password):
-            error = 'Incorrect password.'
-
-        if error is None:
+        if user is None or not check_password_hash(user['password'], password):
+            flash('Incorrect username or password.','danger')
+        else:
             session.clear()
             session['user_id'] = user['id']
             return redirect(url_for('admin.index'))
 
-        flash(error)
-
-    return render_template('admin/auth/login.html')
+    return render_template('admin/auth/login.html', form=form)
 
 @login_required
 @bp.route('/logout')
