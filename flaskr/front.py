@@ -9,3 +9,7 @@ from flaskr.db import get_db
 
 bp = Blueprint('front', __name__, url_prefix='/')
 
+@bp.route('/')
+def index():
+    
+    return render_template('front/index.html')
