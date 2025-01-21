@@ -25,6 +25,9 @@ def create_app(test_config=None):
     from . import front
     app.register_blueprint(front.bp)
     
+    from . import admin
+    app.register_blueprint(admin.bp)
+    
     @app.route('/index')
     def index():
         return 'Hello, World!'
