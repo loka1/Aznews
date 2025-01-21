@@ -44,7 +44,8 @@ def guest_required(view):
 class RegistrationForm(Form):
     class Meta:
         csrf = True
-        csrf_secret = 'secret'
+        csrf_context = session
+        csrf_secret=b'secret'
         
     username = StringField('Username', [validators.Length(min=4, max=25)])
     first_name = StringField('First Name', [validators.Length(min=4, max=25)])
@@ -96,7 +97,8 @@ def register():
 class LoginForm(Form):
     class Meta:
         csrf = True
-        csrf_secret = 'secret'
+        csrf_context = session
+        csrf_secret=b'secret'
     username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])
     remember_me = BooleanField('Remember Me', default=False)
